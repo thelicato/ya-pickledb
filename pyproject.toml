@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "ya-pickledb"
+version = "0.1.0"
+description = "Yet another PickleDB (thread-safe!)"
+authors = ["Angelo Delicato <thelicato@duck.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "ya_pickledb"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
