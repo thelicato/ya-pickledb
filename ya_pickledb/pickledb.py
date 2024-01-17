@@ -3,6 +3,7 @@ import json
 import atexit
 import safer
 from threading import Lock, Thread
+from .cache import Cache
 from .errors import KeyStringError, FileAccessError
 
 
@@ -14,6 +15,7 @@ class YAPickleDB(object):
         self.load(location, auto_dump)
         self.dthread = None
         self.db_lock = Lock()
+        self.cache = Cache()
 
         # Write data into the database on exit
         atexit.register(self._autodumpdb)
@@ -71,11 +73,23 @@ class YAPickleDB(object):
         if self.auto_dump:
             self._dump()
 
-    def set(self, key, value):
+    def _check_key_cache(self, key):
+        if self.cache.is_key_expired(key):
+            self.cache.delete_key(key)
+            self.rem(key)
+
+    def _check_all_keys(self):
+        for key in self.db.keys():
+            self._check_key_cache(key)
+
+    def set(self, key, value, max_age=None):
         '''Set the str or int value of a key'''
         if isinstance(key, str) or isinstance(key, int):
             self.db[key] = value
-            self._autodumpdb()
+            if max_age:
+                self.cache.add_key_to_cache(key, max_age)
+            else:
+                self._autodumpdb()
             return True
         else:
             raise KeyStringError("Key/name must be a string!")
@@ -83,16 +97,19 @@ class YAPickleDB(object):
     def get(self, key):
         '''Get the value of a key'''
         try:
+            self._check_key_cache(key)
             return self.db[key]
         except KeyError:
             return None
 
     def getall(self):
         '''Return a list of all keys in db'''
+        self._check_all_keys()
         return self.db.keys()
 
     def exists(self, key):
         '''Return True if key exists in db, return False if not'''
+        self._check_all_keys()
         return key in self.db
 
     def rem(self, key):
@@ -105,6 +122,7 @@ class YAPickleDB(object):
 
     def totalkeys(self, name=None):
         '''Get a total number of keys, lists, and dicts inside the db'''
+        self._check_all_keys()
         total = len(self.db)
         return total
 
@@ -227,7 +245,9 @@ class YAPickleDB(object):
 class Util:
     @staticmethod
     def dump_db(obj: YAPickleDB, lock: Lock):
-        data = obj.db
+        cached_keys = obj.cache.get_cached_keys()
+        data = {key: obj.db[key] for key in obj.db if key not in cached_keys}
+
         try:
             lock.acquire()
             with safer.open(obj.path, "w") as file:
