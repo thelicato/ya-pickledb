@@ -23,6 +23,7 @@ The new feature additions are inspired by [elara](https://github.com/saurabh0719
 - Fast and flexible
 - Thread-safe!
 - Choose between manual and auto commits
+- Cache simple data structures
 
 ## 📚 Usage
 
@@ -39,7 +40,7 @@ print(value)
 
 This is the full list of all functions available to the user:
 - ``commit()``: manually save the data to file storage.
-- ``set(key, value)``: set the value of a key.
+- ``set(key, value, max_age=None)``: set the value of a key.
 - ``get(key)``: get the value of a key.
 - ``getall()``: get a list of all keys.
 - ``exists(key)``: get wheter a key exists or not.
