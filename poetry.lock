@@ -91,6 +91,18 @@ tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
 
 [[package]]
+name = "safer"
+version = "4.12.3"
+description = "🧿 A safer writer for files and streams 🧿"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "safer-4.12.3-py3-none-any.whl", hash = "sha256:def5100a9eac29379ef7c8fac5f0232b80fbcb7915e1dcfcd35df1a282696663"},
+    {file = "safer-4.12.3.tar.gz", hash = "sha256:264eb65b2c4efa324099054015a07917cd7b31ae03f8f04471696b474890c9c1"},
+]
+
+[[package]]
 name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
@@ -105,4 +117,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "f50a26006b8d05c1865384a44c5ff02c6826305590fc53b89a3c39a78e76e960"
+content-hash = "a6dc33a893bd61d29c63ef88f5eb47d4ef72f95088a8a887cc87b146e7233989"

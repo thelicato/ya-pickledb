@@ -1,15 +1,12 @@
 import os
-import shutil
 import json
-from tempfile import NamedTemporaryFile
-from threading import Lock
-from .db_thread import DB_Thread
+import atexit
+import safer
+from threading import Lock, Thread
+from .errors import KeyStringError, FileAccessError
 
 
 class YAPickleDB(object):
-
-    key_string_error = TypeError('Key/name must be a string!')
-
     def __init__(self, location, auto_dump, sig):
         '''Creates a database object and loads the data from the location path.
         If the file does not exist it will be created on the first update.
@@ -17,6 +14,9 @@ class YAPickleDB(object):
         self.load(location, auto_dump)
         self.dthread = None
         self.db_lock = Lock()
+
+        # Write data into the database on exit
+        atexit.register(self._autodumpdb)
 
     def __getitem__(self, item):
         '''Syntax sugar for get()'''
@@ -33,7 +33,7 @@ class YAPickleDB(object):
     def load(self, location, auto_dump):
         '''Loads, reloads or changes the path to the db file'''
         location = os.path.expanduser(location)
-        self.loco = location
+        self.path = location
         self.auto_dump = auto_dump
         if os.path.exists(location):
             self._loaddb()
@@ -42,30 +42,26 @@ class YAPickleDB(object):
         return True
 
     def _dump(self):
-        '''Dump to a temporary file, and then move to the actual location'''
-        with NamedTemporaryFile(mode='wt', delete=False) as f:
-            json.dump(self.db, f)
-        if os.stat(f.name).st_size != 0:
-            shutil.move(f.name, self.loco)
-
-    def dump(self):
-        '''Force dump memory db to file'''
-        if self.dthread is not None:
+        '''Dump memory db to file'''
+        if self.dthread is not None and self.dthread.is_alive():
             self.dthread.join()
 
-            self.dthread = DB_Thread(
-                target=self._dump, args=(self, self.db_lock)
-            )
-            self.dthread.start()
-            self.dthread.join()
+        self.dthread = Thread(
+            target=Util.dump_db, args=(self, self.db_lock)
+        )
+        self.dthread.start()
+        self.dthread.join()
         return True
+
+    def commit(self):
+        self._dump()
 
     def _loaddb(self):
         '''Load or reload the json info from the file'''
         try:
-            self.db = json.load(open(self.loco, 'rt'))
+            self.db = json.load(open(self.path, 'rt'))
         except ValueError:
-            if os.stat(self.loco).st_size == 0:  # Error raised because file is empty
+            if os.stat(self.path).st_size == 0:  # Error raised because file is empty
                 self.db = {}
             else:
                 raise  # File is not empty, avoid overwriting it
@@ -73,7 +69,7 @@ class YAPickleDB(object):
     def _autodumpdb(self):
         '''Write/save the json dump into the file if auto_dump is enabled'''
         if self.auto_dump:
-            self.dump()
+            self._dump()
 
     def set(self, key, value):
         '''Set the str value of a key'''
@@ -82,7 +78,7 @@ class YAPickleDB(object):
             self._autodumpdb()
             return True
         else:
-            raise self.key_string_error
+            raise KeyStringError("Key/name must be a string!")
 
     def get(self, key):
         '''Get the value of a key'''
@@ -130,7 +126,7 @@ class YAPickleDB(object):
             self._autodumpdb()
             return True
         else:
-            raise self.key_string_error
+            raise KeyStringError("Key/name must be a string!")
 
     def ladd(self, name, value):
         '''Add a value to a list'''
@@ -198,7 +194,7 @@ class YAPickleDB(object):
             self._autodumpdb()
             return True
         else:
-            raise self.key_string_error
+            raise KeyStringError("Key/name must be a string!")
 
     def dadd(self, name, pair):
         '''Add a key-value pair to a dict, "pair" is a tuple'''
@@ -252,3 +248,17 @@ class YAPickleDB(object):
         self.db = {}
         self._autodumpdb()
         return True
+
+
+class Util:
+    @staticmethod
+    def dump_db(obj: YAPickleDB, lock: Lock):
+        data = obj.db
+        try:
+            lock.acquire()
+            with safer.open(obj.path, "w") as file:
+                json.dump(data, file, indent=4)
+                lock.release()
+                return True
+        except:
+            raise FileAccessError("File already exists")

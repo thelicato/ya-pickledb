@@ -9,6 +9,7 @@ packages = [{include = "ya_pickledb"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+safer = "^4.12.3"
 
 
 [tool.poetry.group.dev.dependencies]
