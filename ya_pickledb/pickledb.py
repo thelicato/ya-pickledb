@@ -7,7 +7,7 @@ from .errors import KeyStringError, FileAccessError
 
 
 class YAPickleDB(object):
-    def __init__(self, location, auto_dump, sig):
+    def __init__(self, location, auto_dump):
         '''Creates a database object and loads the data from the location path.
         If the file does not exist it will be created on the first update.
         '''
@@ -23,11 +23,11 @@ class YAPickleDB(object):
         return self.get(item)
 
     def __setitem__(self, key, value):
-        '''Sytax sugar for set()'''
+        '''Syntax sugar for set()'''
         return self.set(key, value)
 
     def __delitem__(self, key):
-        '''Sytax sugar for rem()'''
+        '''Syntax sugar for rem()'''
         return self.rem(key)
 
     def load(self, location, auto_dump):
@@ -72,8 +72,8 @@ class YAPickleDB(object):
             self._dump()
 
     def set(self, key, value):
-        '''Set the str value of a key'''
-        if isinstance(key, str):
+        '''Set the str or int value of a key'''
+        if isinstance(key, str) or isinstance(key, int):
             self.db[key] = value
             self._autodumpdb()
             return True
@@ -85,7 +85,7 @@ class YAPickleDB(object):
         try:
             return self.db[key]
         except KeyError:
-            return False
+            return None
 
     def getall(self):
         '''Return a list of all keys in db'''
@@ -105,19 +105,8 @@ class YAPickleDB(object):
 
     def totalkeys(self, name=None):
         '''Get a total number of keys, lists, and dicts inside the db'''
-        if name is None:
-            total = len(self.db)
-            return total
-        else:
-            total = len(self.db[name])
-            return total
-
-    def append(self, key, more):
-        '''Add more to a key's value'''
-        tmp = self.db[key]
-        self.db[key] = tmp + more
-        self._autodumpdb()
-        return True
+        total = len(self.db)
+        return total
 
     def lcreate(self, name):
         '''Create a list, name must be str'''
@@ -128,7 +117,7 @@ class YAPickleDB(object):
         else:
             raise KeyStringError("Key/name must be a string!")
 
-    def ladd(self, name, value):
+    def lpush(self, name, value):
         '''Add a value to a list'''
         self.db[name].append(value)
         self._autodumpdb()
@@ -176,18 +165,11 @@ class YAPickleDB(object):
         '''Returns the length of the list'''
         return len(self.db[name])
 
-    def lappend(self, name, pos, more):
-        '''Add more to a value in a list'''
-        tmp = self.db[name][pos]
-        self.db[name][pos] = tmp + more
-        self._autodumpdb()
-        return True
-
     def lexists(self, name, value):
         '''Determine if a value  exists in a list'''
         return value in self.db[name]
 
-    def dcreate(self, name):
+    def hcreate(self, name):
         '''Create a dict, name must be str'''
         if isinstance(name, str):
             self.db[name] = {}
@@ -196,52 +178,44 @@ class YAPickleDB(object):
         else:
             raise KeyStringError("Key/name must be a string!")
 
-    def dadd(self, name, pair):
+    def hset(self, name, key, value):
         '''Add a key-value pair to a dict, "pair" is a tuple'''
-        self.db[name][pair[0]] = pair[1]
+        self.db[name][key] = value
         self._autodumpdb()
         return True
 
-    def dget(self, name, key):
+    def hget(self, name, key):
         '''Return the value for a key in a dict'''
         return self.db[name][key]
 
-    def dgetall(self, name):
+    def hgetall(self, name):
         '''Return all key-value pairs from a dict'''
         return self.db[name]
 
-    def drem(self, name):
+    def hrem(self, name):
         '''Remove a dict and all of its pairs'''
         del self.db[name]
         self._autodumpdb()
         return True
 
-    def dpop(self, name, key):
+    def hpop(self, name, key):
         '''Remove one key-value pair in a dict'''
         value = self.db[name][key]
         del self.db[name][key]
         self._autodumpdb()
         return value
 
-    def dkeys(self, name):
+    def hkeys(self, name):
         '''Return all the keys for a dict'''
         return self.db[name].keys()
 
-    def dvals(self, name):
+    def hvals(self, name):
         '''Return all the values for a dict'''
         return self.db[name].values()
 
-    def dexists(self, name, key):
+    def hexists(self, name, key):
         '''Determine if a key exists or not in a dict'''
         return key in self.db[name]
-
-    def dmerge(self, name1, name2):
-        '''Merge two dicts together into name1'''
-        first = self.db[name1]
-        second = self.db[name2]
-        first.update(second)
-        self._autodumpdb()
-        return True
 
     def deldb(self):
         '''Delete everything from the database'''

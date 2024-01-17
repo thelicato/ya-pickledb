@@ -5,6 +5,6 @@ __description__ = "Yet another PickleDB (thread-safe!)"
 from .pickledb import YAPickleDB
 
 
-def load(location, auto_dump, sig=True):
+def load(location, auto_dump):
     '''Return a pickledb object. location is the path to the json file.'''
-    return YAPickleDB(location, auto_dump, sig)
+    return YAPickleDB(location, auto_dump)

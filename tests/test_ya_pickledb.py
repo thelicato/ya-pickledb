@@ -18,7 +18,7 @@ def test_getall():
     db.deldb()
     db.set('key1', 'value1')
     db.set('key2', 'value2')
-    db.dcreate('dict1')
+    db.hcreate('dict1')
     db.lcreate('list1')
     x = db.getall()
     y = dict.fromkeys(['key2', 'key1', 'dict1', 'list1']).keys()
@@ -37,15 +37,7 @@ def test_rem():
     db.set('key', 'value')
     db.rem('key')
     x = db.get('key')
-    assert x is False
-
-
-def test_append():
-    db = ya_pickledb.load('tests.db', auto_dump=False)
-    db.set('key', 'value')
-    db.append('key', 'value')
-    x = db.get('key')
-    assert x == 'valuevalue'
+    assert x is None
 
 
 def test_exists():
@@ -67,7 +59,7 @@ def test_not_exists():
 def test_lexists():
     db = ya_pickledb.load('tests.db', auto_dump=False)
     db.lcreate('list')
-    db.ladd('list', 'value')
+    db.lpush('list', 'value')
     x = db.lexists('list', 'value')
     assert x is True
     db.lremlist('list')
@@ -76,7 +68,7 @@ def test_lexists():
 def test_not_lexists():
     db = ya_pickledb.load('tests.db', auto_dump=False)
     db.lcreate('list')
-    db.ladd('list', 'value')
+    db.lpush('list', 'value')
     x = db.lexists('list', 'not_value')
     assert x is False
     db.lremlist('list')
@@ -85,10 +77,10 @@ def test_not_lexists():
 def test_lrange():
     db = ya_pickledb.load('tests.db', auto_dump=False)
     db.lcreate('list')
-    db.ladd('list', 'one')
-    db.ladd('list', 'two')
-    db.ladd('list', 'three')
-    db.ladd('list', 'four')
+    db.lpush('list', 'one')
+    db.lpush('list', 'two')
+    db.lpush('list', 'three')
+    db.lpush('list', 'four')
     x = db.lrange('list', 1, 3)
     assert x == ['two', 'three']
     db.lremlist('list')
@@ -96,17 +88,17 @@ def test_lrange():
 
 def test_dexists():
     db = ya_pickledb.load('tests.db', auto_dump=False)
-    db.dcreate('dict')
-    db.dadd('dict', ('key', 'value'))
-    x = db.dexists('dict', 'key')
+    db.hcreate('dict')
+    db.hset('dict', 'key', 'value')
+    x = db.hexists('dict', 'key')
     assert x is True
-    db.drem('dict')
+    db.hrem('dict')
 
 
-def test_not_dexists():
+def test_not_hexists():
     db = ya_pickledb.load('tests.db', auto_dump=False)
-    db.dcreate('dict')
-    db.dadd('dict', ('key', 'value'))
-    x = db.dexists('dict', 'not_key')
+    db.hcreate('dict')
+    db.hset('dict', 'key', 'value')
+    x = db.hexists('dict', 'not_key')
     assert x is False
-    db.drem('dict')
+    db.hrem('dict')
