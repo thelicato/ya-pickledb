@@ -65,7 +65,7 @@ This is the full list of all functions available to the user:
 - ``hkeys(key)``: get all the keys for a dict.
 - ``hvals(key)``: get all the values for a dict.
 - ``hexists(key, dict_key)``: determine if a key exists in a dict.
-- 
+
 
 ## 🚀 Installation
 
