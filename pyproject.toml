@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ya_pickledb"
-version = "0.1.0"
+version = "0.1.1"
 description = "Yet another PickleDB (thread-safe!)"
 authors = ["Angelo Delicato <thelicato@duck.com>"]
 license = "MIT"
