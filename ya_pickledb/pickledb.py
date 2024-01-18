@@ -7,7 +7,7 @@ from zlib import crc32
 from threading import Lock, Thread
 from typing import Dict, List, Any
 from .cache import Cache
-from .errors import WrongTypeError, KeyStringError, FileAccessError, LoadChecksumError
+from .errors import WrongTypeError, FileAccessError, LoadChecksumError
 
 
 types_mapping = {
