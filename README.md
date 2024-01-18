@@ -13,7 +13,7 @@
 
 ---
 
-``ya-pickledb`` (Yet Another PickleDB) is a an open-source key-value store for *Python* using the ``json`` module. It is heavily inspired by [pickledb](https://github.com/patx/pickledb), but also provides new features (like thread-safety using ``safer``). 
+``ya-pickledb`` (Yet Another PickleDB) is a an open-source key-value store for *Python* using the ``msgpack`` module. It is heavily inspired by [pickledb](https://github.com/patx/pickledb), but also provides new features (like thread-safety using ``safer``). 
 
 The new feature additions are inspired by [elara](https://github.com/saurabh0719/elara); but since it cannot serialize complex data structure to filesystem I decided to take the best of both worlds and create a new package.
 
@@ -48,10 +48,8 @@ This is the full list of all functions available to the user:
 - ``totalkeys()``: get a total number of keys inside the db.
 - ``lcreate(key)``: create a list.
 - ``lpush(key, value)``: add a value to a list.
-- ``lextend(key, sequence)``: extend a list with a sequence.
 - ``lgetall(key)``: return all values in a list.
 - ``lget(key, value, pos)``: return the value in a specific position of a list.
-- ``lrange(key, start=None, end=None)``: return range of values in a list.
 - ``lremlist(key)``: remove a list.
 - ``lremvalue(key, value)``: remove a value from a list.
 - ``lpop(key, pos)``: remove ne value in a list.
@@ -67,6 +65,7 @@ This is the full list of all functions available to the user:
 - ``hvals(key)``: get all the values for a dict.
 - ``hexists(key, dict_key)``: determine if a key exists in a dict.
 
+All the functions should return ``None`` if something goes wrong (e.g. the ``key`` accessed is missing). Errors are raised when the input type is wrong (e.g. setting a ``bool`` as key).
 
 ## 🚀 Installation
 

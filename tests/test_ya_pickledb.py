@@ -74,18 +74,6 @@ def test_not_lexists():
     db.lremlist('list')
 
 
-def test_lrange():
-    db = ya_pickledb.load('tests.db', auto_dump=False)
-    db.lcreate('list')
-    db.lpush('list', 'one')
-    db.lpush('list', 'two')
-    db.lpush('list', 'three')
-    db.lpush('list', 'four')
-    x = db.lrange('list', 1, 3)
-    assert x == ['two', 'three']
-    db.lremlist('list')
-
-
 def test_dexists():
     db = ya_pickledb.load('tests.db', auto_dump=False)
     db.hcreate('dict')

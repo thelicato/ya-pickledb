@@ -5,17 +5,38 @@ import atexit
 import safer
 from zlib import crc32
 from threading import Lock, Thread
-from typing import Dict
+from typing import Dict, List, Any
 from .cache import Cache
-from .errors import KeyStringError, FileAccessError, LoadChecksumError
+from .errors import WrongTypeError, KeyStringError, FileAccessError, LoadChecksumError
+
+
+types_mapping = {
+    "location": {
+        "error_str": "The location must be a string",
+        "valid_types": [str]
+    },
+    "key": {
+        "error_str": "The key must be a string",
+        "valid_types": [str]
+    },
+    "value": {
+        "error_str": "The value must be either a string, a number or a bool",
+        "valid_types": [str, int, float, bool]
+    },
+    "position": {
+        "error_str": "The value must be a int",
+        "valid_types": [int]
+    }
+}
 
 
 class YAPickleDB(object):
-    def __init__(self, location, auto_dump):
+    def __init__(self, location: str, auto_dump):
         '''Creates a database object and loads the data from the location path.
         If the file does not exist it will be created on the first update.
         '''
-        self.load(location, auto_dump)
+        self._ensure_type('location', location)
+        self._load(location, auto_dump)
         self.dthread = None
         self.db_lock = Lock()
         self.cache = Cache()
@@ -23,19 +44,32 @@ class YAPickleDB(object):
         # Write data into the database on exit
         atexit.register(self._autodumpdb)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Any:
         '''Syntax sugar for get()'''
+        self._ensure_type('key', item)
         return self.get(item)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: str | int | float | bool) -> None:
         '''Syntax sugar for set()'''
+        self._ensure_type('key', key)
+        self._ensure_type('value', value)
         return self.set(key, value)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         '''Syntax sugar for rem()'''
+        self._ensure_type('key', key)
         return self.rem(key)
 
-    def load(self, location, auto_dump):
+    def _ensure_type(self, type_key: str, value: Any) -> None:
+        valid_type_keys = types_mapping.keys()
+        if not type_key in valid_type_keys:
+            raise Exception("Invalid type key")
+        valid_types = types_mapping[type_key]["valid_types"]
+        error_str = types_mapping[type_key]["error_str"]
+        if not any([isinstance(value, t) for t in valid_types]):
+            raise WrongTypeError(error_str)
+
+    def _load(self, location: str, auto_dump: bool) -> bool:
         '''Loads, reloads or changes the path to the db file'''
         location = os.path.expanduser(location)
         self.path = location
@@ -46,7 +80,7 @@ class YAPickleDB(object):
             self.db = {}
         return True
 
-    def _dump(self):
+    def _dump(self) -> bool:
         '''Dump memory db to file'''
         if self.dthread is not None and self.dthread.is_alive():
             self.dthread.join()
@@ -58,10 +92,10 @@ class YAPickleDB(object):
         self.dthread.join()
         return True
 
-    def commit(self):
+    def commit(self) -> None:
         self._dump()
 
-    def _loaddb(self):
+    def _loaddb(self) -> None:
         '''Load or reload the json info from the file'''
         try:
             self.db = Util.read_plain_db(self)
@@ -71,174 +105,225 @@ class YAPickleDB(object):
             else:
                 raise  # File is not empty, avoid overwriting it
 
-    def _autodumpdb(self):
+    def _autodumpdb(self) -> None:
         '''Write/save the json dump into the file if auto_dump is enabled'''
         if self.auto_dump:
             self._dump()
 
-    def _check_key_cache(self, key):
+    def _check_key_cache(self, key: str) -> None:
+        if not isinstance(key, str):
+            raise WrongTypeError("The key must be a string")
         if self.cache.is_key_expired(key):
             self.cache.delete_key(key)
             self.rem(key)
 
-    def _check_all_keys(self):
+    def _check_all_keys(self) -> None:
         for key in self.db.keys():
             self._check_key_cache(key)
 
-    def set(self, key, value, max_age=None):
+    def set(self, key: str, value: str | int | float | bool, max_age: int = None):
         '''Set the str or int value of a key'''
         if isinstance(key, str) or isinstance(key, int):
             self.db[key] = value
             if max_age:
                 self.cache.add_key_to_cache(key, max_age)
             else:
+                # If max_age is set then it should not be dumped
                 self._autodumpdb()
             return True
         else:
             raise KeyStringError("Key/name must be a string!")
 
-    def get(self, key):
+    def get(self, key: str) -> str | int | float | bool | None:
         '''Get the value of a key'''
+        self._ensure_type('key', key)
         try:
             self._check_key_cache(key)
             return self.db[key]
         except KeyError:
             return None
 
-    def getall(self):
+    def getall(self) -> List[str]:
         '''Return a list of all keys in db'''
         self._check_all_keys()
         return self.db.keys()
 
-    def exists(self, key):
+    def exists(self, key: str) -> bool:
         '''Return True if key exists in db, return False if not'''
+        self._ensure_type('key', key)
         self._check_all_keys()
         return key in self.db
 
-    def rem(self, key):
+    def rem(self, key: str) -> bool:
         '''Delete a key'''
+        self._ensure_type('key', key)
         if not key in self.db:  # return False instead of an exception
             return False
         del self.db[key]
         self._autodumpdb()
         return True
 
-    def totalkeys(self, name=None):
+    def totalkeys(self) -> int:
         '''Get a total number of keys, lists, and dicts inside the db'''
         self._check_all_keys()
         total = len(self.db)
         return total
 
-    def lcreate(self, name):
+    def lcreate(self, name: str) -> bool:
         '''Create a list, name must be str'''
-        if isinstance(name, str):
-            self.db[name] = []
-            self._autodumpdb()
-            return True
-        else:
-            raise KeyStringError("Key/name must be a string!")
+        self._ensure_type('key', name)
+        self.db[name] = []
+        self._autodumpdb()
+        return True
 
-    def lpush(self, name, value):
+    def lpush(self, name: str, value: str | int | float | bool) -> bool:
         '''Add a value to a list'''
+        self._ensure_type('key', name)
+        self._ensure_type('value', value)
         self.db[name].append(value)
         self._autodumpdb()
         return True
 
-    def lextend(self, name, seq):
-        '''Extend a list with a sequence'''
-        self.db[name].extend(seq)
-        self._autodumpdb()
-        return True
-
-    def lgetall(self, name):
+    def lgetall(self, name: str) -> List[str | int | float | bool] | None:
         '''Return all values in a list'''
+        self._ensure_type('key', name)
+        if not self.exists(name):
+            return None
         return self.db[name]
 
-    def lget(self, name, pos):
+    def lget(self, name: str, pos: int) -> str | int | float | bool | None:
         '''Return one value in a list'''
+        self._ensure_type('key', name)
+        self._ensure_type('position', pos)
+        if not self.exists(name):
+            return None
+        if self.llen(name) < pos + 1:
+            return None
         return self.db[name][pos]
 
-    def lrange(self, name, start=None, end=None):
-        '''Return range of values in a list '''
-        return self.db[name][start:end]
-
-    def lremlist(self, name):
+    def lremlist(self, name: str) -> None:
         '''Remove a list and all of its values'''
-        number = len(self.db[name])
+        if not self.exists(name):
+            return
         del self.db[name]
         self._autodumpdb()
-        return number
 
-    def lremvalue(self, name, value):
+    def lremvalue(self, name: str, value: str | int | float | bool) -> None:
         '''Remove a value from a certain list'''
-        self.db[name].remove(value)
-        self._autodumpdb()
-        return True
+        if not self.exists(name):
+            return
+        try:
+            self.db[name].remove(value)
+            self._autodumpdb()
+        except ValueError:
+            return
 
-    def lpop(self, name, pos):
+    def lpop(self, name: str, pos: int) -> str | int | float | bool | None:
         '''Remove one value in a list'''
+        self._ensure_type('key', name)
+        self._ensure_type('position', pos)
+        if not self.exists(name):
+            return None
+        if self.llen(name) < pos + 1:
+            return None
         value = self.db[name][pos]
         del self.db[name][pos]
         self._autodumpdb()
         return value
 
-    def llen(self, name):
+    def llen(self, name: str) -> int | None:
         '''Returns the length of the list'''
+        self._ensure_type('key', name)
+        if not self.exists(name):
+            return None
         return len(self.db[name])
 
-    def lexists(self, name, value):
+    def lexists(self, name: str, value: str | int | float | bool) -> bool:
         '''Determine if a value  exists in a list'''
+        self._ensure_type('key', name)
+        self._ensure_type('value', value)
+        if not self.exists(name):
+            return False
         return value in self.db[name]
 
-    def hcreate(self, name):
+    def hcreate(self, name: str) -> bool:
         '''Create a dict, name must be str'''
-        if isinstance(name, str):
-            self.db[name] = {}
-            self._autodumpdb()
-            return True
-        else:
-            raise KeyStringError("Key/name must be a string!")
+        self._ensure_type('key', name)
+        self.db[name] = {}
+        self._autodumpdb()
+        return True
 
-    def hset(self, name, key, value):
-        '''Add a key-value pair to a dict, "pair" is a tuple'''
+    def hset(self, name: str, key: str, value: Any) -> bool:
+        '''Add a key-value pair to a dict'''
+        self._ensure_type('key', name)
+        self._ensure_type('key', key)
+        if not self.exists(name):
+            self.hcreate(name)
         self.db[name][key] = value
         self._autodumpdb()
         return True
 
-    def hget(self, name, key):
+    def hget(self, name: str, key: str) -> Any:
         '''Return the value for a key in a dict'''
+        self._ensure_type('key', name)
+        self._ensure_type('key', key)
+        if not self.exists(name):
+            return None
+        if not self.hexists(name, key):
+            return None
         return self.db[name][key]
 
-    def hgetall(self, name):
+    def hgetall(self, name: str) -> Dict[str, Any] | None:
         '''Return all key-value pairs from a dict'''
+        self._ensure_type('key', name)
+        if not self.exists(name):
+            return None
         return self.db[name]
 
-    def hrem(self, name):
+    def hrem(self, name: str) -> bool:
         '''Remove a dict and all of its pairs'''
+        if not self.exists(name):
+            return False
         del self.db[name]
         self._autodumpdb()
         return True
 
-    def hpop(self, name, key):
+    def hpop(self, name: str, key: str) -> Any:
         '''Remove one key-value pair in a dict'''
+        self._ensure_type('key', name)
+        self._ensure_type('key', key)
+        if not self.exists(name):
+            return None
+        if not self.hexists(name, key):
+            return None
         value = self.db[name][key]
         del self.db[name][key]
         self._autodumpdb()
         return value
 
-    def hkeys(self, name):
+    def hkeys(self, name: str) -> List[str] | None:
         '''Return all the keys for a dict'''
+        self._ensure_type('key', name)
+        if not self.exists(name):
+            return None
         return self.db[name].keys()
 
-    def hvals(self, name):
+    def hvals(self, name: str) -> List[Any] | None:
         '''Return all the values for a dict'''
+        self._ensure_type('key', name)
+        if not self.exists(name):
+            return None
         return self.db[name].values()
 
-    def hexists(self, name, key):
+    def hexists(self, name: str, key: str) -> bool:
         '''Determine if a key exists or not in a dict'''
+        self._ensure_type('key', name)
+        self._ensure_type('key', key)
+        if not self.exists(name):
+            return False
         return key in self.db[name]
 
-    def deldb(self):
+    def deldb(self) -> bool:
         '''Delete everything from the database'''
         self.db = {}
         self._autodumpdb()
