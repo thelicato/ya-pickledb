@@ -1,10 +1,13 @@
 import os
 import json
+import msgpack
 import atexit
 import safer
+from zlib import crc32
 from threading import Lock, Thread
+from typing import Dict
 from .cache import Cache
-from .errors import KeyStringError, FileAccessError
+from .errors import KeyStringError, FileAccessError, LoadChecksumError
 
 
 class YAPickleDB(object):
@@ -61,7 +64,7 @@ class YAPickleDB(object):
     def _loaddb(self):
         '''Load or reload the json info from the file'''
         try:
-            self.db = json.load(open(self.path, 'rt'))
+            self.db = Util.read_plain_db(self)
         except ValueError:
             if os.stat(self.path).st_size == 0:  # Error raised because file is empty
                 self.db = {}
@@ -244,14 +247,44 @@ class YAPickleDB(object):
 
 class Util:
     @staticmethod
+    def check_mag(mag):
+        return mag == b"YAPDB"
+
+    @staticmethod
+    def read_plain_db(obj: YAPickleDB) -> Dict:
+        with safer.open(obj.path, "rb") as fctx:
+            if not Util.check_mag(fctx.read(5)):
+                raise FileAccessError("File magic number not known")
+            checksum = int.from_bytes(fctx.read(4), "little", signed=False)
+            data = fctx.read()
+            calculated_checksum = crc32(data)
+            if calculated_checksum != checksum:
+                raise LoadChecksumError(
+                    f"calculated checksum: {calculated_checksum} is different from stored checksum {checksum}"
+                )
+            try:
+                db_dump = msgpack.unpackb(data)
+                curr_db = {key: json.loads(
+                    db_dump[key]) for key in db_dump}
+            except FileNotFoundError:
+                raise FileAccessError("File not found")
+            return curr_db
+
+    @staticmethod
     def dump_db(obj: YAPickleDB, lock: Lock):
         cached_keys = obj.cache.get_cached_keys()
-        data = {key: obj.db[key] for key in obj.db if key not in cached_keys}
+        db_data = {key: json.dumps(obj.db[key])
+                   for key in obj.db if key not in cached_keys}
+
+        data = msgpack.packb(db_data, use_bin_type=True)
+        buffer = b"YAPDB"
+        buffer += (crc32(data)).to_bytes(4, "little")
+        buffer += data
 
         try:
             lock.acquire()
-            with safer.open(obj.path, "w") as file:
-                json.dump(data, file, indent=4)
+            with safer.open(obj.path, "wb") as file:
+                file.write(buffer)
                 lock.release()
                 return True
         except:
