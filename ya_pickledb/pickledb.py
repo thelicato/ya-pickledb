@@ -26,6 +26,14 @@ types_mapping = {
     "position": {
         "error_str": "The value must be a int",
         "valid_types": [int]
+    },
+    "list": {
+        "error_str": "This is not a list!",
+        "valid_types": [list]
+    },
+    "dict": {
+        "error_str": "This is not a dict!",
+        "valid_types": [dict]
     }
 }
 
@@ -46,18 +54,14 @@ class YAPickleDB(object):
 
     def __getitem__(self, item: str) -> Any:
         '''Syntax sugar for get()'''
-        self._ensure_type('key', item)
         return self.get(item)
 
     def __setitem__(self, key: str, value: str | int | float | bool) -> None:
         '''Syntax sugar for set()'''
-        self._ensure_type('key', key)
-        self._ensure_type('value', value)
         return self.set(key, value)
 
     def __delitem__(self, key: str) -> None:
         '''Syntax sugar for rem()'''
-        self._ensure_type('key', key)
         return self.rem(key)
 
     def _ensure_type(self, type_key: str, value: Any) -> None:
@@ -111,8 +115,7 @@ class YAPickleDB(object):
             self._dump()
 
     def _check_key_cache(self, key: str) -> None:
-        if not isinstance(key, str):
-            raise WrongTypeError("The key must be a string")
+        self._ensure_type("key", key)
         if self.cache.is_key_expired(key):
             self.cache.delete_key(key)
             self.rem(key)
@@ -123,16 +126,14 @@ class YAPickleDB(object):
 
     def set(self, key: str, value: str | int | float | bool, max_age: int = None):
         '''Set the str or int value of a key'''
-        if isinstance(key, str) or isinstance(key, int):
-            self.db[key] = value
-            if max_age:
-                self.cache.add_key_to_cache(key, max_age)
-            else:
-                # If max_age is set then it should not be dumped
-                self._autodumpdb()
-            return True
+        self._ensure_type('value', value)
+        self.db[key] = value
+        if max_age:
+            self.cache.add_key_to_cache(key, max_age)
         else:
-            raise KeyStringError("Key/name must be a string!")
+            # If max_age is set then it should not be dumped
+            self._autodumpdb()
+        return True
 
     def get(self, key: str) -> str | int | float | bool | None:
         '''Get the value of a key'''
@@ -157,7 +158,7 @@ class YAPickleDB(object):
     def rem(self, key: str) -> bool:
         '''Delete a key'''
         self._ensure_type('key', key)
-        if not key in self.db:  # return False instead of an exception
+        if not self.exists(key):
             return False
         del self.db[key]
         self._autodumpdb()
@@ -180,6 +181,9 @@ class YAPickleDB(object):
         '''Add a value to a list'''
         self._ensure_type('key', name)
         self._ensure_type('value', value)
+        if not self.exists(name):
+            self.lcreate(name)
+        self._ensure_type('list', self.db[name])
         self.db[name].append(value)
         self._autodumpdb()
         return True
@@ -189,6 +193,7 @@ class YAPickleDB(object):
         self._ensure_type('key', name)
         if not self.exists(name):
             return None
+        self._ensure_type('list', self.db[name])
         return self.db[name]
 
     def lget(self, name: str, pos: int) -> str | int | float | bool | None:
@@ -197,6 +202,7 @@ class YAPickleDB(object):
         self._ensure_type('position', pos)
         if not self.exists(name):
             return None
+        self._ensure_type('list', self.db[name])
         if self.llen(name) < pos + 1:
             return None
         return self.db[name][pos]
@@ -205,6 +211,7 @@ class YAPickleDB(object):
         '''Remove a list and all of its values'''
         if not self.exists(name):
             return
+        self._ensure_type('list', self.db[name])
         del self.db[name]
         self._autodumpdb()
 
@@ -212,6 +219,7 @@ class YAPickleDB(object):
         '''Remove a value from a certain list'''
         if not self.exists(name):
             return
+        self._ensure_type('list', self.db[name])
         try:
             self.db[name].remove(value)
             self._autodumpdb()
@@ -224,6 +232,7 @@ class YAPickleDB(object):
         self._ensure_type('position', pos)
         if not self.exists(name):
             return None
+        self._ensure_type('list', self.db[name])
         if self.llen(name) < pos + 1:
             return None
         value = self.db[name][pos]
@@ -236,6 +245,7 @@ class YAPickleDB(object):
         self._ensure_type('key', name)
         if not self.exists(name):
             return None
+        self._ensure_type('list', self.db[name])
         return len(self.db[name])
 
     def lexists(self, name: str, value: str | int | float | bool) -> bool:
@@ -244,6 +254,7 @@ class YAPickleDB(object):
         self._ensure_type('value', value)
         if not self.exists(name):
             return False
+        self._ensure_type('list', self.db[name])
         return value in self.db[name]
 
     def hcreate(self, name: str) -> bool:
