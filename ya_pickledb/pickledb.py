@@ -280,6 +280,7 @@ class YAPickleDB(object):
         self._ensure_type('key', key)
         if not self.exists(name):
             return None
+        self._ensure_type('dict', self.db[name])
         if not self.hexists(name, key):
             return None
         return self.db[name][key]
@@ -289,12 +290,14 @@ class YAPickleDB(object):
         self._ensure_type('key', name)
         if not self.exists(name):
             return None
+        self._ensure_type('dict', self.db[name])
         return self.db[name]
 
     def hrem(self, name: str) -> bool:
         '''Remove a dict and all of its pairs'''
         if not self.exists(name):
             return False
+        self._ensure_type('dict', self.db[name])
         del self.db[name]
         self._autodumpdb()
         return True
@@ -305,6 +308,7 @@ class YAPickleDB(object):
         self._ensure_type('key', key)
         if not self.exists(name):
             return None
+        self._ensure_type('dict', self.db[name])
         if not self.hexists(name, key):
             return None
         value = self.db[name][key]
@@ -317,6 +321,7 @@ class YAPickleDB(object):
         self._ensure_type('key', name)
         if not self.exists(name):
             return None
+        self._ensure_type('dict', self.db[name])
         return self.db[name].keys()
 
     def hvals(self, name: str) -> List[Any] | None:
@@ -324,6 +329,7 @@ class YAPickleDB(object):
         self._ensure_type('key', name)
         if not self.exists(name):
             return None
+        self._ensure_type('dict', self.db[name])
         return self.db[name].values()
 
     def hexists(self, name: str, key: str) -> bool:
@@ -332,6 +338,7 @@ class YAPickleDB(object):
         self._ensure_type('key', key)
         if not self.exists(name):
             return False
+        self._ensure_type('dict', self.db[name])
         return key in self.db[name]
 
     def deldb(self) -> bool:
