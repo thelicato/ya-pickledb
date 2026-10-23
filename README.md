@@ -75,6 +75,16 @@ Run the following command to install the latest version:
 pip install ya_pickledb
 ```
 
+## 🛠 Development
+
+Install the locked dependencies and run the test suite with uv:
+
+```sh
+uv sync
+uv run pytest
+uv audit --locked
+```
+
 
 ## 🪪 License
 
