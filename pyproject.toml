@@ -1,6 +1,6 @@
 [project]
 name = "ya-pickledb"
-version = "0.2.0"
+version = "0.3.0"
 description = "Yet another PickleDB (thread-safe!)"
 authors = [{ name = "Angelo Delicato", email = "thelicato@duck.com" }]
 license = "MIT"
