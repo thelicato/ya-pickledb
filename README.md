@@ -1,5 +1,5 @@
 <h1 align="center">
-	<img src="https://github.com/thelicato/ya-pickledb/blob/main/logo.png?raw=true" width="400">
+	<img src="https://github.com/thelicato/ya-pickledb/blob/main/logo.png?raw=true" width="200">
 </h1>
 
 <h4 align="center">Yet another PickleDB (thread-safe!)</h4>
@@ -73,6 +73,16 @@ Run the following command to install the latest version:
 
 ```
 pip install ya_pickledb
+```
+
+## 🛠 Development
+
+Install the locked dependencies and run the test suite with uv:
+
+```sh
+uv sync
+uv run pytest
+uv audit --locked
 ```
 
 
